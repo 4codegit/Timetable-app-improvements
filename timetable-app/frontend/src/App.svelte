@@ -10,6 +10,10 @@
                 Generate, MoveEntry, MoveEntries, SwapEntries, ReplaceSchedule, ListSchedule, ExportAll, ImportAll, ScheduleCSV, GetSchoolSettings, UpdateSchoolSettings, HasPreciseSolver, ExportPDF, StartPreciseGeneration, GetGenerationProgress
         } from "../wailsjs/go/main/App";
         import { onMount } from "svelte";
+        import AppSidebar from "./components/AppSidebar.svelte";
+        import ScheduleGrid from "./components/ScheduleGrid.svelte";
+        import PlacementSummary from "./components/PlacementSummary.svelte";
+        import IssuesTab from "./components/IssuesTab.svelte";
 
         let schools = [];
         let activeSchoolID = 0;
@@ -1464,21 +1468,24 @@ function cellSubs(kind, id, day, slot) {
                 return subjName(subjects, e.subject_id) + " (" + teachName(teachers, e.teacher_id) + ")";
         }
 
+        $: scheduleGridVM = {
+                overviewMode, grid, slots, isSubRow, subParentName, focusRow, periodLabel,
+                activeDayIdx, dayName, selectedEntry, dropTarget, kind, onPointerDown,
+                cellSubs, subjectColor, subjShort, subjName, teachName, pdfShowTeacher,
+                pdfShowRoom, roomById, conflictIDs, classById, classes, compact, ghost,
+                removeEntry, cellAt, subjects, teachers
+        };
+        $: placementVM = { report, lessons };
+        $: issuesVM = {
+                report, subjects, classes, teachers, subjName, className, teachName,
+                dayName, generate, onGoSchedule: () => tab = "schedule"
+        };
+
         loadSchools();
 </script>
 
 <div class="app">
-        <aside class="sidebar">
-                <div class="brand">📅 <span>Timetable</span></div>
-                <nav class="nav">
-                        <button class:active={tab === "refs"} on:click={() => tab = "refs"}><span class="ico">📚</span>Справочники</button>
-                        <button class:active={tab === "lessons"} on:click={() => tab = "lessons"}><span class="ico">📝</span>Учебный план</button>
-                        <button class:active={tab === "constraints"} on:click={() => tab = "constraints"}><span class="ico">⚠️</span>Ограничения</button>
-                        <button class:active={tab === "settings"} on:click={() => tab = "settings"}><span class="ico">⚙️</span>Настройки</button>
-                        <button class:active={tab === "schedule"} on:click={() => tab = "schedule"}><span class="ico">🗓️</span>Расписание</button>
-                        <button class:active={tab === "issues"} on:click={() => tab = "issues"}><span class="ico">🐛</span>Проблемы</button>
-                </nav>
-        </aside>
+        <AppSidebar activeTab={tab} onChange={(nextTab) => tab = nextTab} />
 
         <div class="content">
                 <header class="topbar">
@@ -1808,60 +1815,7 @@ function cellSubs(kind, id, day, slot) {
                                         {#if schedule.length === 0}
                                                 <p class="empty">Расписание пусто. Добавьте уроки и нажмите «Сгенерировать».</p>
                                         {:else}
-                                                {#if overviewMode}
-                                                        <div class="overview">
-                                                                {#each grid as row (row.id)}
-                                                                        <div class="mini" class:is-sub={isSubRow(row.id)}>
-                                                                                <button class="mini-title" on:click={() => focusRow(row.id)} title="Открыть этот класс отдельно">{row.label}{#if subParentName(row.id)}<span class="sub-badge">подгруппа {subParentName(row.id)}</span>{/if}</button>
-                                                                                <table>
-                                                                                        <thead><tr><th class="d"></th>{#each Array(slots) as _, si}<th>{#if periodLabel(si)}{periodLabel(si)}{:else}П{si + 1}{/if}</th>{/each}</tr></thead>
-                                                                                        <tbody>
-                                                                                                {#each row.cells as dayCells, di}
-                                                                                                        <tr><td class="day">{dayName(activeDayIdx[di])}</td>{#each dayCells as cell, si}<td
-                                                                                                                class:filled={!!cell}
-                                                                                                                class:selected={selectedEntry && cell && selectedEntry.id === cell.id}
-                                                                                                                class:drop-target={dropTarget && dropTarget.rowId === row.id && dropTarget.day === activeDayIdx[di] && dropTarget.slot === si}
-                                                                                                                title={cell ? cell.label : ''}
-                                                                                                                data-cell
-                                                                                                                data-day={activeDayIdx[di]}
-                                                                                                                data-slot={si}
-                                                                                                                data-row={row.id}
-                                                                                                                data-kind={kind}
-                                                                                                                on:pointerdown={(e) => onPointerDown(e, cell, kind, row.id, activeDayIdx[di], si)}>{#if cell}<div class="chip" class:half={cellSubs("class", row.id, activeDayIdx[di], si).length > 0} class:conflict={cell.conflict} style="background:{cell.conflict ? '#dc2626' : subjectColor(cell.subject_id)}">{subjShort(subjects, cell.subject_id)}</div>{/if}{#each cellSubs("class", row.id, activeDayIdx[di], si) as sc}<div class="chip half" style="background:{subjectColor(sc.subject_id)}" title="Подгруппа {classes.find((c) => c.id === sc.class_id)?.name || ''}">{subjShort(subjects, sc.subject_id)}</div>{/each}</td>{/each}</tr>
-                                                                                                {/each}
-                                                                                        </tbody>
-                                                                                </table>
-                                                                        </div>
-                                                                {/each}
-                                                        </div>
-                                                {:else}
-                                                <div class="grid-scroll">
-                                                        {#each grid as row (row.id)}
-                                                                <div class="class-block" class:compact class:is-sub={isSubRow(row.id)}>
-                                                                        <h3>{row.label} {#if subParentName(row.id)}<span class="sub-badge">подгруппа {subParentName(row.id)}</span>{/if}</h3>
-                                                                        <table class:compact>
-                                                                                <thead><tr><th class="day-h">День</th>{#each Array(slots) as _, si}<th>П{si + 1}{#if periodLabel(si)}<span class="tm">{periodLabel(si)}</span>{/if}</th>{/each}</tr></thead>
-                                                                                <tbody>
-                                                                                        {#each row.cells as dayCells, di}
-                                                                                                <tr><td class="day">{dayName(activeDayIdx[di])}</td>{#each dayCells as cell, si}<td
-                                                                                                        class:filled={!!cell}
-                                                                                                        class:selected={selectedEntry && cell && selectedEntry.id === cell.id}
-                                                                                                        class:drop-target={dropTarget && dropTarget.rowId === row.id && dropTarget.day === activeDayIdx[di] && dropTarget.slot === si}
-                                                                                                        title={cell ? cell.label : ''}
-                                                                                                        data-cell
-                                                                                                        data-day={activeDayIdx[di]}
-                                                                                                        data-slot={si}
-                                                                                                        data-row={row.id}
-                                                                                                        data-kind={kind}
-                                                                                                        on:pointerdown={(e) => onPointerDown(e, cell, kind, row.id, activeDayIdx[di], si)}>{#if cell}<div class="chip" class:half={cellSubs(kind, row.id, activeDayIdx[di], si).length > 0} class:conflict={cell.conflict} style="background:{cell.conflict ? '#dc2626' : subjectColor(cell.subject_id)}"><b>{subjName(subjects, cell.subject_id)}</b>{#if pdfShowTeacher}<span>{teachName(teachers, cell.teacher_id)}</span>{/if}{#if pdfShowRoom && cell.room_id}<span>{roomById.get(cell.room_id)?.name || ""}</span>{/if}</div><button class="cell-x" title="Удалить" on:click={(e) => { e.stopPropagation(); removeEntry(cell.id); }}>✕</button>{/if}{#each cellSubs(kind, row.id, activeDayIdx[di], si) as sc}<div class="chip half" role="button" tabindex="-1" class:conflict={conflictIDs.has(sc.id)} style="background:{conflictIDs.has(sc.id) ? '#dc2626' : subjectColor(sc.subject_id)}" title="Подгруппа {classById.get(sc.class_id)?.name || ''}" on:pointerdown={(e) => { e.stopPropagation(); onPointerDown(e, cellAt("class", sc.class_id, activeDayIdx[di], si), "class", row.id, activeDayIdx[di], si); }}><b>{subjName(subjects, sc.subject_id)}</b>{#if pdfShowTeacher}<span>{teachName(teachers, sc.teacher_id)}</span>{/if}</div>{/each}</td>{/each}</tr>
-                                                                                        {/each}
-                                                                                </tbody>
-                                                                        </table>
-                                                                </div>
-                                                        {/each}
-                                                </div>
-                                                {/if}
-                                                {#if ghost}<div class="drag-ghost" style="left:{ghost.x}px; top:{ghost.y}px;">{ghost.label}</div>{/if}
+                                                <ScheduleGrid vm={scheduleGridVM} />
                                                 {#if report.conflicts.length || report.violations.length}
                                                         <div class="report">
                                                                 <h3>Отчёт по конфликтам</h3>
@@ -1879,163 +1833,11 @@ function cellSubs(kind, id, day, slot) {
                                                 {/if}
                                         {/if}
                                         {#if lessons.length || schedule.length}
-                                                <div class="panel" class:ok={report.unplaced.length === 0}>
-                                                        <div class="panel-head">
-                                                                <h3>Панель расстановки</h3>
-                                                                <span class="panel-pct" class:bad={report.unplaced.length > 0}>{report.placedPct}%</span>
-                                                        </div>
-                                                        <div class="bar"><div class="bar-fill" class:bad={report.unplaced.length > 0} style="width:{report.placedPct}%"></div></div>
-                                                        <div class="panel-stats">
-                                                                <span>Размещено <b>{report.placedHours}</b> из <b>{report.totalHours}</b> ч</span>
-                                                                {#if report.missingHours > 0}<span class="warn">осталось {report.missingHours} ч</span>{:else}<span class="good">все уроки размещены</span>{/if}
-                                                                <span class="muted">уроков в плане: {lessons.length}</span>
-                                                        </div>
-                                                        {#if report.reasonGroups.length}
-                                                                <div class="panel-reasons">
-                                                                        <b>Почему не расставлено ({report.unplaced.length} уроков):</b>
-                                                                        {#each report.reasonGroups as g}
-                                                                                <div class="reason-row">
-                                                                                        <span class="reason-badge">{g.items.length}</span>
-                                                                                        <span class="reason-text">{g.reason}</span>
-                                                                                        <span class="reason-who">{g.items.map((i) => i.subject + " · " + i.cls).join(", ")}</span>
-                                                                                </div>
-                                                                        {/each}
-                                                                </div>
-                                                        {/if}
-                                                        {#if report.classStats.length}
-                                                                <details class="panel-classes">
-                                                                        <summary>По классам: размещено / нужно недельных часов</summary>
-                                                                        <div class="cls-grid">
-                                                                                {#each report.classStats as cs}
-                                                                                        <div class="cls-cell" class:bad={cs.missing > 0} title={cs.missing > 0 ? `не хватает ${cs.missing}ч` : "полностью размещён"}>
-                                                                                                <span class="cls-name">{cs.name}</span>
-                                                                                                <span class="cls-val">{cs.placed}/{cs.need}</span>
-                                                                                        </div>
-                                                                                {/each}
-                                                                        </div>
-                                                                </details>
-                                                        {/if}
-                                                </div>
+                                                <PlacementSummary report={placementVM.report} lessons={placementVM.lessons} />
                                         {/if}
                                 </section>
                         {:else if tab === "issues"}
-                                <section class="card">
-                                        <div class="card-head"><h2>🐛 Проблемы расписания</h2></div>
-                                        <div class="issues-summary">
-                                                <div class="issue-stat"><span class="issue-num">{report.unplaced.length}</span><span class="issue-label">уроков не размещено</span></div>
-                                                <div class="issue-stat"><span class="issue-num">{report.conflicts.length}</span><span class="issue-label">накладок (учитель/класс/кабинет)</span></div>
-                                                <div class="issue-stat"><span class="issue-num">{report.violations.length}</span><span class="issue-label">нарушений жёстких ограничений</span></div>
-                                                <div class="issue-stat"><span class="issue-num">{report.placedPct}%</span><span class="issue-label">заполнено сетки</span></div>
-                                        </div>
-
-                                        {#if report.unplaced.length > 0}
-                                        <div class="issues-section">
-                                                <h3>❌ Не размещённые уроки ({report.unplaced.length})</h3>
-                                                <p class="hint">Эти уроки из учебного плана не попали ни в одну ячейку расписания. Чаще всего причина — нет свободных слотов у учителя или класса, или жёсткие ограничения блокируют все варианты.</p>
-                                                <table class="data">
-                                                        <thead><tr><th>Предмет</th><th>Класс</th><th>Учитель</th><th>Часов в неделю</th><th>Причина</th></tr></thead>
-                                                        <tbody>
-                                                                {#each report.unplaced as u}
-                                                                        <tr class="issue-row">
-                                                                        <td>{subjName(subjects, u.subject_id)}</td>
-                                                                        <td>{className(classes, u.class_id)}</td>
-                                                                        <td>{teachName(teachers, u.teacher_id)}</td>
-                                                                        <td>{u.hours_per_week}</td>
-                                                                        <td class="issue-reason">{u.reason}</td>
-                                                                        </tr>
-                                                                {/each}
-                                                        </tbody>
-                                                </table>
-                                        </div>
-                                        {:else}
-                                        <div class="issues-section empty-state">
-                                                <h3>✅ Все уроки размещены</h3>
-                                                <p class="hint">В расписании нет нераспределённых уроков.</p>
-                                        </div>
-                                        {/if}
-
-                                        {#if report.conflicts.length > 0}
-                                        <div class="issues-section">
-                                                <h3>⚠️ Накладки ({report.conflicts.length})</h3>
-                                                <p class="hint">Одна и та же сущность (учитель, класс или кабинет) стоит в двух местах одновременно.</p>
-                                                <table class="data">
-                                                        <thead><tr><th>День</th><th>Пара</th><th>Тип</th><th>Участники</th></tr></thead>
-                                                        <tbody>
-                                                                {#each report.conflicts as c}
-                                                                        <tr>
-                                                                        <td>{dayName(c.day)}</td>
-                                                                        <td>П{c.slot + 1}</td>
-                                                                        <td>{c.type}</td>
-                                                                        <td>{#each c.items as it, i}{it.subject} ({it.who}){#if i < c.items.length - 1}, {/if}{/each}</td>
-                                                                        </tr>
-                                                                {/each}
-                                                        </tbody>
-                                                </table>
-                                        </div>
-                                        {/if}
-
-                                        {#if report.violations.length > 0}
-                                        <div class="issues-section">
-                                                <h3>🚫 Нарушения жёстких ограничений ({report.violations.length})</h3>
-                                                <p class="hint">Урок стоит в ячейке, которая запрещена ограничением (учитель занят, класс занят, кабинет занят).</p>
-                                                <table class="data">
-                                                        <thead><tr><th>День</th><th>Пара</th><th>Что нарушено</th></tr></thead>
-                                                        <tbody>
-                                                                {#each report.violations as v}
-                                                                        <tr>
-                                                                        <td>{dayName(v.day)}</td>
-                                                                        <td>П{v.slot + 1}</td>
-                                                                        <td>{v.what}</td>
-                                                                        </tr>
-                                                                {/each}
-                                                        </tbody>
-                                                </table>
-                                        </div>
-                                        {/if}
-
-                                        {#if report.classStats.length > 0}
-                                        <div class="issues-section">
-                                                <h3>📊 По классам</h3>
-                                                <table class="data">
-                                                        <thead><tr><th>Класс</th><th>Размещено ч</th><th>Нужно ч</th><th>Не хватает</th><th>Статус</th></tr></thead>
-                                                        <tbody>
-                                                                {#each report.classStats as cs}
-                                                                        <tr class:bad={cs.missing > 0}>
-                                                                        <td>{cs.name}</td>
-                                                                        <td>{cs.placed}</td>
-                                                                        <td>{cs.need}</td>
-                                                                        <td class:bad={cs.missing > 0}>{cs.missing > 0 ? `-${cs.missing}` : "—"}</td>
-                                                                        <td>{cs.missing > 0 ? "не полностью" : "полностью"}</td>
-                                                                        </tr>
-                                                                {/each}
-                                                        </tbody>
-                                                </table>
-                                        </div>
-                                        {/if}
-
-                                        {#if report.teacherStats.length > 0}
-                                        <div class="issues-section">
-                                                <h3>👨‍🏫 По учителям (нагрузка)</h3>
-                                                <p class="hint">Сколько часов из учебного плана размещено у каждого учителя. Нет лимита — только фактическая нагрузка.</p>
-                                                <table class="data">
-                                                        <thead><tr><th>Учитель</th><th>Размещено ч</th></tr></thead>
-                                                        <tbody>
-                                                                {#each report.teacherStats as ts}
-                                                                        <tr>
-                                                                        <td>{ts.name}</td>
-                                                                        <td>{ts.placed} ч</td>
-                                                                        </tr>
-                                                                {/each}
-                                                        </tbody>
-                                                </table>
-                                        </div>
-                                        {/if}
-
-                                        <div class="issues-actions">
-                                                <button class="primary" on:click={generate}>🔄 Перегенерировать расписание</button>
-                                                <button on:click={() => tab = "schedule"}>↩ К расписанию</button>
-                                        </div>
-                                </section>
+                                <IssuesTab vm={issuesVM} />
                         {/if}
                 </main>
 
@@ -2079,32 +1881,6 @@ function cellSubs(kind, id, day, slot) {
                 color: #1e293b;
                 background: #f1f5f9;
         }
-        .sidebar {
-                width: 232px;
-                flex: 0 0 232px;
-                background: #ffffff;
-                border-right: 1px solid #e2e8f0;
-                display: flex;
-                flex-direction: column;
-                padding: 18px 14px;
-                position: sticky;
-                top: 0;
-                height: 100vh;
-                box-sizing: border-box;
-        }
-        .brand { font-size: 20px; font-weight: 700; color: #4f46e5; padding: 4px 8px 18px; }
-        .brand span { color: #0f172a; }
-        .nav { display: flex; flex-direction: column; gap: 4px; }
-        .nav button {
-                display: flex; align-items: center; gap: 10px;
-                text-align: left;
-                background: transparent; border: none; border-radius: 10px;
-                padding: 10px 12px; color: #475569; font-size: 14px; cursor: pointer;
-        }
-        .nav button:hover { background: #f1f5f9; color: #0f172a; }
-        .nav button.active { background: #eef2ff; color: #4f46e5; font-weight: 600; }
-        .nav .ico { font-size: 16px; width: 20px; text-align: center; }
-
         .content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .topbar {
                 display: flex; align-items: center; gap: 14px;
@@ -2187,7 +1963,7 @@ function cellSubs(kind, id, day, slot) {
         .list li:last-child { border-bottom: none; }
         .muted { color: #64748b; }
 
-        table.data { border-collapse: collapse; width: 100%; margin-top: 8px; }
+        table.data { border-collapse: collapse; width: 100%; margin-top: 12px; }
         table.data th, table.data td { border-bottom: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; font-size: 13px; }
         table.data thead th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; }
         table.data tbody tr:hover { background: #f8fafc; }
@@ -2204,8 +1980,6 @@ function cellSubs(kind, id, day, slot) {
         .rule-max input { width: 64px; }
         .bell-time { width: 84px; font-variant-numeric: tabular-nums; }
         .empty { color: #94a3b8; padding: 24px; text-align: center; background: #f8fafc; border-radius: 10px; }
-        .grid-scroll { overflow-x: auto; }
-
         .toast { background: #16a34a; color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; margin-left: auto; }
         .ver { margin-left: auto; font-size: 12px; color: #94a3b8; font-family: ui-monospace, monospace; }
         .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; }
@@ -2220,125 +1994,26 @@ function cellSubs(kind, id, day, slot) {
         .rep-sec ul { margin: 4px 0 0; padding-left: 18px; }
         .rep-sec li { margin: 2px 0; }
 
-        /* Панель расстановки: сколько уроков размещено и почему не все
-           (сводка как в отчётах aSc Timetables / FET). */
-        .panel { margin-top: 14px; border: 1px solid #fca5a5; background: #fff7f7; border-radius: 12px; padding: 12px 16px; font-size: 13px; }
-        .panel.ok { border-color: #a7f3d0; background: #f0fdf9; }
-        .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-        .panel-head h3 { margin: 0; font-size: 14px; color: #0f172a; }
-        .panel.ok .panel-head h3 { color: #065f46; }
-        .panel-pct { font-size: 20px; font-weight: 700; color: #b91c1c; }
-        .panel.ok .panel-pct { color: #059669; }
-        .bar { height: 8px; margin: 8px 0; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-        .bar-fill { height: 100%; background: #ef4444; border-radius: 999px; transition: width 0.3s; }
-        .panel.ok .bar-fill { background: #10b981; }
-        .panel-stats { display: flex; flex-wrap: wrap; gap: 14px; color: #334155; }
-        .panel .warn { color: #b45309; font-weight: 600; }
-        .panel .good { color: #059669; font-weight: 600; }
-        .panel .muted { color: #64748b; }
-        .panel-reasons { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0; }
-        .panel-reasons b { color: #b91c1c; }
-        .reason-row { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; }
-        .reason-badge { flex: 0 0 auto; min-width: 20px; text-align: center; background: #dc2626; color: #fff; border-radius: 999px; font-size: 11.5px; font-weight: 700; padding: 2px 6px; }
-        .reason-text { color: #7f1d1d; }
-        .reason-who { color: #64748b; }
-        .panel-classes { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0; }
-        .panel-classes summary { cursor: pointer; color: #0f172a; font-weight: 600; }
-        .cls-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-        .cls-cell { display: flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 4px 10px; }
-        .cls-cell.bad { border-color: #fca5a5; background: #fef2f2; }
-        .cls-name { font-weight: 600; color: #334155; }
-        .cls-val { color: #64748b; font-variant-numeric: tabular-nums; }
-        .cls-cell.bad .cls-val { color: #b91c1c; font-weight: 700; }
-
-        /* Обзор «вся школа»: все классы мини-таблицами на одном экране
-           (как лист «Timetable for all classes» в aSc Timetables). */
-        /* ================= Полный редизайн сетки расписания =================
-           Современный стиль «чипов» (как aSc Timetables online): белые
-           карточки-таблицы, между ячейками зазор (border-spacing), урок —
-           цветной чип со скруглением и белым текстом, светлые фоны. */
-
-        .grid-scroll { overflow-x: auto; }
-        .class-block { margin-bottom: 24px; min-width: 560px; }
-        .class-block h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; color: #0f172a; letter-spacing: 0.2px; }
-        .class-block table, .mini table { border-collapse: separate; border-spacing: 3px; width: 100%; table-layout: fixed; }
-
-        /* Шапка: номер урока + время звонка, без рамок — как панель. */
-        .class-block th, .mini th {
-                background: transparent; color: #94a3b8; font-weight: 700;
-                font-size: 10px; padding: 2px 1px; text-align: center;
-                text-transform: uppercase; letter-spacing: 0.4px;
-                user-select: none; -webkit-user-select: none;
-        }
-        .class-block th .tm { display: block; font-weight: 500; font-size: 8.5px; color: #b6c2d2; text-transform: none; letter-spacing: 0; }
-
-        /* Колонка дней: светлая «пилюля» с днём недели. */
-        .class-block td.day, .mini td.day {
-                background: #f1f5f9; border-radius: 8px; font-weight: 700;
-                color: #475569; font-size: 11px; white-space: nowrap;
-                text-align: center; padding: 2px; user-select: none;
-        }
-
-        /* Ячейка-слот: светлый фон-«лунка», без рамок. */
-        .class-block td, .mini td {
-                background: #f8fafc; border-radius: 8px; padding: 0;
-                text-align: center; font-size: 12px; height: 40px;
-                overflow: hidden; user-select: none; -webkit-user-select: none;
-                touch-action: none; position: relative;
-        }
-        .mini td { height: 26px; font-size: 10px; }
-
-        /* Урок-чип: цветной блок на всю ячейку с внутренним отступом. */
-        .chip {
-                margin: 2px; height: calc(100% - 4px); border-radius: 6px;
-                color: #fff; font-weight: 700; padding: 2px 4px;
-                display: flex; flex-direction: column; align-items: center;
-                justify-content: center; gap: 1px; line-height: 1.15;
-                overflow: hidden; cursor: grab;
-                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
-        }
-        td.filled:active .chip { cursor: grabbing; }
-        .chip b { font-size: 11.5px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .chip span { font-size: 9.5px; font-weight: 500; opacity: 0.92; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        /* Мини-чип обзора: просто короткое имя предмета мелким шрифтом. */
-        .mini .chip { font-size: 9.5px; font-weight: 700; }
-        .chip.conflict { box-shadow: 0 0 0 2px #fca5a5, 0 1px 2px rgba(15, 23, 42, 0.25); }
-
-        /* Состояния: выделение и цель перетаскивания — на ячейке. */
-        td.filled.selected { outline: 3px solid #2563eb; outline-offset: -3px; border-radius: 10px; }
-        td.drop-target { outline: 3px dashed #2563eb; outline-offset: -3px; background: #dbeafe !important; border-radius: 10px; }
-        .cell-x {
-                position: absolute; top: 3px; right: 3px; border: none;
-                background: rgba(255,255,255,0.35); color: #fff; width: 16px; height: 16px;
-                line-height: 14px; border-radius: 5px; cursor: pointer; font-size: 10px; padding: 0;
-        }
-        .cell-x:hover { background: rgba(255,255,255,0.55); }
-        .drag-ghost { position: fixed; z-index: 9999; pointer-events: none; transform: translate(-50%, -50%); background: #1d4ed8; color: #fff; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; max-width: 220px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
-
-        .class-block table.compact { border-spacing: 1px; }
-        .class-block table.compact th, .class-block table.compact td { height: 24px; font-size: 9px; }
-        .class-block table.compact .chip b { font-size: 8.5px; }
-        .class-block table.compact .chip span { display: none; }
-        .class-block.compact h3 { font-size: 11px; margin: 0 0 4px; }
-        .mini { border: 1px solid #e5e9f0; border-radius: 12px; padding: 10px; background: #fff; min-width: 0; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
-        .mini .mini-title { display: block; background: none; border: none; padding: 0; margin: 0 0 8px; font-family: inherit; font-size: 13.5px; font-weight: 800; color: #1d4ed8; cursor: pointer; text-align: left; }
-        /* Подгруппа: бейдж + акцентная полоса слева на карточке */
-        .sub-badge { background: #ede9fe; color: #6d28d9; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 6px; margin-left: 6px; vertical-align: 1px; white-space: nowrap; }
-        .mini.is-sub, .class-block.is-sub { border-left: 3px solid #8b5cf6; }
-        /* Половинки разделённой ячейки (параллельные подгруппы) */
-        .chip.half { height: 50%; margin: 1px 2px; font-size: 9.5px; }
-        .chip.half b { font-size: 9.5px; }
-        .chip.half span { font-size: 8px; }
-        .mini .mini-title:hover { text-decoration: underline; }
-        .mini th.d, .mini td.day { width: 34px; }
-        .overview { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; align-items: start; }
-
-        /* Страница «Проблемы» */
-
         /* Прогресс-бар генерации */
         .gen-progress { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .prog-label { font-size: 13px; color: #64748b; min-width: 150px; }
         .prog-bar { flex: 1; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
         .prog-fill { height: 100%; background: #4f46e5; transition: width 0.3s ease; }
         .prog-pct { font-size: 13px; font-weight: 700; color: #4f46e5; min-width: 35px; }
+
+        @media (max-width: 980px) {
+                .topbar { align-items: flex-start; flex-wrap: wrap; }
+                .school { flex: 1 1 100%; }
+        }
+        @media (max-width: 720px) {
+                .app { flex-direction: column; }
+                .topbar { position: static; padding: 12px 16px; }
+                main { padding: 16px; }
+                .cards { grid-template-columns: 1fr; }
+                .export-panel { width: 100%; box-sizing: border-box; }
+        }
+        @media (max-width: 480px) {
+                .topbar, main { padding-left: 12px; padding-right: 12px; }
+                .card { padding: 14px; }
+        }
 </style>
