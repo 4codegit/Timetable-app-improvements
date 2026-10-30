@@ -14,6 +14,10 @@
         import ScheduleGrid from "./components/ScheduleGrid.svelte";
         import PlacementSummary from "./components/PlacementSummary.svelte";
         import IssuesTab from "./components/IssuesTab.svelte";
+        import ReferencesTab from "./components/ReferencesTab.svelte";
+        import LessonsTab from "./components/LessonsTab.svelte";
+        import ConstraintsTab from "./components/ConstraintsTab.svelte";
+        import SettingsTab from "./components/SettingsTab.svelte";
 
         let schools = [];
         let activeSchoolID = 0;
@@ -1506,242 +1510,37 @@ function cellSubs(kind, id, day, slot) {
 
                 <main>
                         {#if tab === "refs"}
-                                <div class="cards">
-                                        <section class="card">
-                                                <div class="card-head">
-                                                        <h2>Учителя</h2>
-                                                        <div class="csvbar">
-                                                                <button class="mini" on:click={() => downloadRefsJSON('teachers')}>⬇ JSON</button>
-                                                                <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('teachers', e)} /></label>
-                                                        </div>
-                                                </div>
-                                                <div class="row">
-                                                        <input bind:value={t.name} placeholder="Имя" />
-                                                        <input bind:value={t.short_name} placeholder="Кратко" />
-                                                        <button class="primary" on:click={addTeacher}>+</button>
-                                                </div>
-                                                <ul class="list">{#each teachers as x}<li>
-                                                        {#if editing && editing.kind === "teacher" && editing.id === x.id}
-                                                                <input class="edit" bind:value={x.name} placeholder="Имя" />
-                                                                <input class="edit w-s" bind:value={x.short_name} placeholder="Кратко" />
-                                                                <button class="primary sm" on:click={() => saveEdit("teacher", x)} title="Сохранить">✓</button>
-                                                                <button class="sm" on:click={cancelEdit} title="Отмена">✗</button>
-                                                        {:else}
-                                                                <span class="li-text">{x.name} <small>({x.short_name})</small></span>
-                                                                <button class="ghost-ico sm" on:click={() => startEdit("teacher", x.id)} title="Редактировать">✎</button>
-                                                                <button class="danger sm" on:click={() => removeTeacher(x.id)}>✕</button>
-                                                        {/if}
-                                                </li>{/each}</ul>
-                                        </section>
-
-                                        <section class="card">
-                                                <div class="card-head">
-                                                        <h2>Предметы</h2>
-                                                        <div class="csvbar">
-                                                                <button class="mini" on:click={() => downloadRefsJSON('subjects')}>⬇ JSON</button>
-                                                                <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('subjects', e)} /></label>
-                                                        </div>
-                                                </div>
-                                                <div class="row">
-                                                        <input bind:value={s.name} placeholder="Название" />
-                                                        <input bind:value={s.short_name} placeholder="Кратко" />
-                                                        <button class="primary" on:click={addSubject}>+</button>
-                                                </div>
-                                                <ul class="list">{#each subjects as x}<li>
-                                                        {#if editing && editing.kind === "subject" && editing.id === x.id}
-                                                                <input class="edit" bind:value={x.name} placeholder="Название" />
-                                                                <input class="edit w-s" bind:value={x.short_name} placeholder="Кратко" />
-                                                                <button class="primary sm" on:click={() => saveEdit("subject", x)} title="Сохранить">✓</button>
-                                                                <button class="sm" on:click={cancelEdit} title="Отмена">✗</button>
-                                                        {:else}
-                                                                <span class="li-text">{x.name} <small>({x.short_name})</small></span>
-                                                                <button class="ghost-ico sm" on:click={() => startEdit("subject", x.id)} title="Редактировать">✎</button>
-                                                                <button class="danger sm" on:click={() => removeSubject(x.id)}>✕</button>
-                                                        {/if}
-                                                </li>{/each}</ul>
-                                        </section>
-
-                                        <section class="card">
-                                                <div class="card-head">
-                                                        <h2>Классы</h2>
-                                                        <div class="csvbar">
-                                                                <button class="mini" on:click={() => downloadRefsJSON('classes')}>⬇ JSON</button>
-                                                                <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('classes', e)} /></label>
-                                                        </div>
-                                                </div>
-                                                <div class="row">
-                                                        <input bind:value={c.name} placeholder="10А" />
-                                                        <select bind:value={c.room_id} title="Домашний кабинет класса"><option value={0}>— без кабинета —</option>{#each rooms as rm}<option value={rm.id}>{rm.name}</option>{/each}</select>
-                                                        <select bind:value={c.subgroup_of}><option value={null}>— целый класс —</option>{#each classes as x}<option value={x.id}>{x.name} (подгруппа)</option>{/each}</select>
-                                                        <button class="primary" on:click={addClass}>+</button>
-                                                </div>
-                                                <ul class="list">{#each classes as x}<li>
-                                                        {#if editing && editing.kind === "class" && editing.id === x.id}
-                                                                <input class="edit" bind:value={x.name} placeholder="10А" />
-                                                                <select class="edit" bind:value={x.room_id} title="Домашний кабинет"><option value={0}>— без кабинета —</option>{#each rooms as rm}<option value={rm.id}>{rm.name}</option>{/each}</select>
-                                                                <button class="primary sm" on:click={() => saveEdit("class", x)} title="Сохранить">✓</button>
-                                                                <button class="sm" on:click={cancelEdit} title="Отмена">✗</button>
-                                                        {:else}
-                                                                <span class="li-text">{x.name}{#if x.room_id}<span class="muted"> — каб. {rooms.find((rm) => rm.id === x.room_id)?.name || ""}</span>{/if}{x.subgroup_of ? " · подгруппа" : ""}</span>
-                                                                <button class="ghost-ico sm" on:click={() => startEdit("class", x.id)} title="Редактировать">✎</button>
-                                                                <button class="danger sm" on:click={() => removeClass(x.id)}>✕</button>
-                                                        {/if}
-                                                </li>{/each}</ul>
-                                        </section>
-
-                                        <section class="card">
-                                                <div class="card-head">
-                                                        <h2>Кабинеты</h2>
-                                                        <div class="csvbar">
-                                                                <button class="mini" on:click={() => downloadRefsJSON('rooms')}>⬇ JSON</button>
-                                                                <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('rooms', e)} /></label>
-                                                        </div>
-                                                </div>
-                                                <div class="row">
-                                                        <input bind:value={r.name} placeholder="301" />
-                                                        <button class="primary" on:click={addRoom}>+</button>
-                                                </div>
-                                                <ul class="list">{#each rooms as x}<li>
-                                                        {#if editing && editing.kind === "room" && editing.id === x.id}
-                                                                <input class="edit" bind:value={x.name} placeholder="301" />
-                                                                <button class="primary sm" on:click={() => saveEdit("room", x)} title="Сохранить">✓</button>
-                                                                <button class="sm" on:click={cancelEdit} title="Отмена">✗</button>
-                                                        {:else}
-                                                                <span class="li-text">{x.name}</span>
-                                                                <button class="ghost-ico sm" on:click={() => startEdit("room", x.id)} title="Редактировать">✎</button>
-                                                                <button class="danger sm" on:click={() => removeRoom(x.id)}>✕</button>
-                                                        {/if}
-                                                </li>{/each}</ul>
-                                        </section>
-                                </div>
+                                <ReferencesTab
+                                        bind:teachers bind:subjects bind:classes bind:rooms
+                                        bind:t bind:s bind:c bind:r bind:editing
+                                        addTeacher={addTeacher} addSubject={addSubject} addClass={addClass} addRoom={addRoom}
+                                        saveEdit={saveEdit} cancelEdit={cancelEdit} startEdit={startEdit}
+                                        removeTeacher={removeTeacher} removeSubject={removeSubject} removeClass={removeClass} removeRoom={removeRoom}
+                                        downloadRefsJSON={downloadRefsJSON} importRefsJSON={importRefsJSON}
+                                />
                         {:else if tab === "lessons"}
-                                <section class="card">
-                                        <div class="card-head">
-                                                <h2>Учебный план (уроки)</h2>
-                                                <div class="csvbar">
-                                                        <button class="mini" on:click={() => downloadRefsJSON('lessons')}>⬇ JSON</button>
-                                                        <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('lessons', e)} /></label>
-                                                </div>
-                                        </div>
-                                        <div class="lesson-form">
-                                                <select bind:value={curClass}><option value={0}>Выберите класс…</option>{#each classes as x}<option value={x.id}>{x.name}</option>{/each}</select>
-                                        </div>
-                                        {#if curClass}
-                                                {@const cl = lessons.filter((x) => x.class_id === curClass)}
-                                                <table class="data">
-                                                        <thead><tr><th>Предмет</th><th>Учитель</th><th>Ч/нед</th><th></th></tr></thead>
-                                                        <tbody>
-                                                                {#each cl as x}
-                                                                        <tr>
-                                                                                <td>{subjName(subjects, x.subject_id)}</td>
-                                                                                <td><select bind:value={x.teacher_id} on:change={() => updateLesson(x)}>{#each teachers as t}<option value={t.id}>{t.name}</option>{/each}</select></td>
-                                                                                <td><input type="number" min="1" max="40" bind:value={x.hours_per_week} on:change={() => updateLesson(x)} /></td>
-                                                                                <td class="act"><button class="danger sm" on:click={() => removeLesson(x.id)}>✕</button></td>
-                                                                        </tr>
-                                                                {/each}
-                                                                <tr class="addrow">
-                                                                        <td><select bind:value={l.subject_id}><option value={0}>Предмет</option>{#each subjects as s}<option value={s.id}>{s.name}</option>{/each}</select></td>
-                                                                        <td><select bind:value={l.teacher_id}><option value={0}>Учитель</option>{#each teachers as t}<option value={t.id}>{t.name}</option>{/each}</select></td>
-                                                                        <td><input type="number" min="1" max="40" bind:value={l.hours_per_week} placeholder="Ч/нед" /></td>
-                                                                        <td class="act"><button class="primary sm" on:click={addLessonForClass}>+ Добавить</button></td>
-                                                                </tr>
-                                                        </tbody>
-                                                </table>
-                                                {#if cl.length === 0}<p class="muted">У этого класса пока нет уроков. Добавьте предмет и учителя выше.</p>{/if}
-                                        {:else}
-                                                <p class="muted">Выберите класс, чтобы увидеть и редактировать его учебный план (предмет + учитель + часы в неделю).</p>
-                                        {/if}
-                                </section>
+                                <LessonsTab
+                                        classes={classes} bind:lessons bind:curClass bind:l
+                                        subjects={subjects} teachers={teachers} subjName={subjName}
+                                        updateLesson={updateLesson} removeLesson={removeLesson} addLessonForClass={addLessonForClass}
+                                        downloadRefsJSON={downloadRefsJSON} importRefsJSON={importRefsJSON}
+                                />
                         {:else if tab === "constraints"}
-                                <section class="card">
-                                        <div class="card-head"><h2>Ограничения</h2></div>
-                                        <div class="school-days">
-                                                <span class="field-label">Учебные дни недели:</span>
-                                                {#each DAY_NAMES as dn, d}
-                                                        <label class="chk" title={activeDayIdx.includes(d) ? "Учебный день — снять галочку, чтобы убрать день из расписания" : "Выходной — включить день в расписание"}>
-                                                                <input type="checkbox"
-                                                                        checked={(schoolDaysMask & (1 << d)) !== 0}
-                                                                        on:change={(e) => toggleSchoolDay(d, e.currentTarget.checked)} /> {dn}
-                                                        </label>
-                                                {/each}
-                                        </div>
-                                        <p class="hint">Снятые дни сразу исчезают из сетки расписания, генерации и PDF — как выходные. Последний оставшийся день снять нельзя.</p>
-
-                                        <div class="pick-bar">
-                                                <div class="pick-kind">
-                                                        <button class:active={consPickKind === "teacher"} on:click={() => setPickKind("teacher")}>Учитель</button>
-                                                        <button class:active={consPickKind === "class"} on:click={() => setPickKind("class")}>Класс</button>
-                                                        <button class:active={consPickKind === "room"} on:click={() => setPickKind("room")}>Кабинет</button>
-                                                </div>
-                                                <select value={consPickEntity ? consPickEntity.id : 0} on:change={(e) => consPickId = +e.currentTarget.value}>
-                                                        {#each consPickList as x (x.id)}<option value={x.id}>{pickName(x)}</option>{/each}
-                                                </select>
-                                                <span class="hint pick-hint">Клик по ячейке — запретить или разрешить это время.</span>
-                                        </div>
-                                        <table class="pick-grid">
-                                                <thead><tr><th class="d"></th>{#each Array(slots) as _, si}<th>{#if periodLabel(si)}{periodLabel(si)}{:else}П{si + 1}{/if}</th>{/each}</tr></thead>
-                                                <tbody>
-                                                        {#each activeDayIdx as d (d)}
-                                                                <tr>
-                                                                        <td class="day">{dayName(d)}</td>
-                                                                        {#each Array(slots) as _, si}
-                                                                                <td class="slot" class:forbidden={isForbidden(d, si)}
-                                                                                        on:click={() => toggleForbidden(d, si)}
-                                                                                        title={isForbidden(d, si) ? "Клик — разрешить" : "Клик — запретить"}>{#if isForbidden(d, si)}✕{/if}</td>
-                                                                        {/each}
-                                                                </tr>
-                                                        {/each}
-                                                </tbody>
-                                        </table>
-
-
-                                        <ul class="list constraints-list">
-                                                {#each constraints as x}
-                                                        <li>
-                                                                <span class="con-summary">{constraintSummary(x)}</span>
-                                                                <button class="danger sm" on:click={() => removeConstraint(x.id)}>✕</button>
-                                                        </li>
-                                                {/each}
-                                        </ul>
-
-                                        <div class="rule-form">
-                                                <span class="field-label">Правило:</span>
-                                                <select bind:value={ruleSubject}>
-                                                        <option value={0}>Все предметы</option>
-                                                        {#each subjects as s}<option value={s.id}>{s.name}</option>{/each}
-                                                </select>
-                                                <label class="rule-max">не более <input type="number" min="1" max="8" bind:value={ruleMax} /> подряд в день</label>
-                                                <button class="primary sm" on:click={addRunRule}>+ Правило</button>
-                                        </div>
-                                        <p class="hint">Как в aSc Timetables: ученики не получают один и тот же предмет N уроков подряд (например, информатика 1-й, 2-й и 3-й уроки одной строкой). Половинки делёного урока в одном слоте считаются одним периодом.</p>
-                                </section>
+                                <ConstraintsTab
+                                        DAY_NAMES={DAY_NAMES} activeDayIdx={activeDayIdx} schoolDaysMask={schoolDaysMask}
+                                        toggleSchoolDay={toggleSchoolDay} consPickKind={consPickKind} setPickKind={setPickKind}
+                                        bind:consPickId consPickList={consPickList} consPickEntity={consPickEntity} pickName={pickName}
+                                        slots={slots} periodLabel={periodLabel} dayName={dayName}
+                                        isForbidden={isForbidden} toggleForbidden={toggleForbidden}
+                                        constraints={constraints} constraintSummary={constraintSummary} removeConstraint={removeConstraint}
+                                        subjects={subjects} bind:ruleSubject bind:ruleMax addRunRule={addRunRule}
+                                />
                         {:else if tab === "settings"}
-                                <section class="card">
-                                        <div class="card-head"><h2>Настройки школы</h2></div>
-                                        <div class="row">
-                                                <label>Учебных дней: <input type="number" min="1" max="7" bind:value={days} /></label>
-                                                <label>Уроков в день: <input type="number" min="1" max="14" bind:value={slots} on:change={onSlotsChange} /></label>
-                                                <button class="primary" on:click={saveSettings}>Сохранить</button>
-                                                <span class="csvbar">
-                                                        <button class="mini" on:click={() => downloadRefsJSON('periods')}>⬇ JSON звонков</button>
-                                                        <label class="mini file">⬆<input type="file" accept=".json" on:change={(e) => importRefsJSON('periods', e)} /></label>
-                                                </span>
-                                        </div>
-                                        <h3>Расписание звонков</h3>
-                                        <table class="data">
-                                                <thead><tr><th>Урок</th><th>Начало</th><th>Конец</th></tr></thead>
-                                                <tbody>
-                                                        {#each Array(slots) as _, si}
-                                                                <tr>
-                                                                        <td>П{si + 1}</td>
-                                                                        <td><input class="bell-time" type="text" inputmode="numeric" placeholder="08:00" bind:value={bellPeriods[si].start} on:change={() => { bellPeriods[si].start = normalizeTime(bellPeriods[si].start); }} title="24-часовой формат ЧЧ:ММ" /></td>
-                                                                        <td><input class="bell-time" type="text" inputmode="numeric" placeholder="08:45" bind:value={bellPeriods[si].end} on:change={() => { bellPeriods[si].end = normalizeTime(bellPeriods[si].end); }} title="24-часовой формат ЧЧ:ММ" /></td>
-                                                                </tr>
-                                                        {/each}
-                                                </tbody>
-                                        </table>
-                                        <p class="hint">Время отображается в шапке расписания и в PDF. Хранится в базе (SQLite).</p>
-                                </section>
+                                <SettingsTab
+                                        bind:days bind:slots onSlotsChange={onSlotsChange} saveSettings={saveSettings}
+                                        downloadRefsJSON={downloadRefsJSON} importRefsJSON={importRefsJSON}
+                                        bind:bellPeriods normalizeTime={normalizeTime}
+                                />
                         {:else if tab === "schedule"}
                                 <section class="card">
                                         <div class="gen-bar">
@@ -1907,78 +1706,26 @@ function cellSubs(kind, id, day, slot) {
         button.sm { padding: 5px 10px; font-size: 12px; }
         button.danger { background: #fee2e2; color: #b91c1c; }
         button.danger:hover { background: #fecaca; }
-        button.mini { padding: 4px 8px; font-size: 12px; background: #f1f5f9; }
-        button.mini:hover { background: #e2e8f0; }
         .chk { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: #475569; }
         .export-panel { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
         .export-panel .panel-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #64748b; text-transform: uppercase; margin-right: 2px; }
         .grid-info { font-size: 13px; font-weight: 600; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 10px; }
-        .list li { flex-wrap: nowrap; }
-        .list .li-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .list input.edit { flex: 1; min-width: 0; padding: 3px 6px; font-size: 12px; }
-        .list input.edit.w-s { flex: 0 0 64px; }
-        .ghost-ico { background: transparent; border: none; color: #64748b; cursor: pointer; font-size: 12px; padding: 2px 4px; }
-        .ghost-ico:hover { color: #4f46e5; }
-        .field-label { font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        /* Визуальный редактор запретов: клик по ячейке сетки. */
-        .pick-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-        .pick-kind { display: flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-        .pick-kind button { border: none; background: #f8fafc; padding: 6px 14px; cursor: pointer; font-size: 13px; color: #475569; }
-        .pick-kind button.active { background: #4f46e5; color: #fff; }
-        .pick-hint { margin: 0; }
-        .pick-grid { border-collapse: collapse; width: 100%; max-width: 760px; table-layout: fixed; margin-bottom: 14px; }
-        .pick-grid th { font-size: 10.5px; color: #475569; font-weight: 600; padding: 2px 1px; }
-        .pick-grid th.d { width: 42px; }
-        .pick-grid td.day { background: #f1f5f9; font-weight: 700; color: #475569; font-size: 11.5px; text-align: center; padding: 2px; border: 1px solid #e2e8f0; }
-        .pick-grid td.slot { height: 30px; border: 1px solid #e2e8f0; text-align: center; cursor: pointer; color: #fff; font-size: 11px; font-weight: 700; background: #fff; user-select: none; }
-        .pick-grid td.slot:hover { background: #dbeafe; }
-        .pick-grid td.slot.forbidden { background: #dc2626; }
-        .pick-grid td.slot.forbidden:hover { background: #b91c1c; }
-        .constraints-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .con-summary { flex: 1; line-height: 1.4; }
         .chk.warn { color: #b45309; }
         .badge-warn { display: inline-block; background: #fde68a; color: #92400e; padding: 1px 6px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .chk input { width: auto; }
-        .school-days { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 12px; margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
-        .school-days .chk { font-weight: 600; }
-        /* aSc-style multi-select panes: chips in a wrapping, scrollable strip */
-        .row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
         .card {
                 background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
                 padding: 18px; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
         }
-        .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .card-head h2 { margin: 0; font-size: 16px; color: #0f172a; }
         h3 { font-size: 14px; color: #334155; margin: 16px 0 8px; }
 
-        .csvbar { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
-        .file { background: #f1f5f9; padding: 4px 8px; border-radius: 8px; cursor: pointer; }
-        .file:hover { background: #e2e8f0; }
-        .file input { display: none; }
-
-        .list { list-style: none; padding: 0; margin: 0; max-height: 220px; overflow: auto; }
-        .list li { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-        .list li:last-child { border-bottom: none; }
         .muted { color: #64748b; }
-
-        table.data { border-collapse: collapse; width: 100%; margin-top: 12px; }
-        table.data th, table.data td { border-bottom: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; font-size: 13px; }
-        table.data thead th { background: #f8fafc; color: #64748b; font-weight: 600; font-size: 12px; }
-        table.data tbody tr:hover { background: #f8fafc; }
-        table.data td.act { width: 1%; white-space: nowrap; }
 
         .gen-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
         .gen-bar .sep { flex-basis: 100%; height: 0; }
         .pager { display: inline-flex; align-items: center; gap: 6px; }
         .status { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
         .hint { color: #64748b; font-size: 12px; margin: 6px 0 14px; }
-        .rule-form { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; }
-        .rule-form select { min-width: 160px; }
-        .rule-max { font-size: 13px; color: #334155; display: inline-flex; align-items: center; gap: 6px; }
-        .rule-max input { width: 64px; }
-        .bell-time { width: 84px; font-variant-numeric: tabular-nums; }
         .empty { color: #94a3b8; padding: 24px; text-align: center; background: #f8fafc; border-radius: 10px; }
         .toast { background: #16a34a; color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13px; margin-left: auto; }
         .ver { margin-left: auto; font-size: 12px; color: #94a3b8; font-family: ui-monospace, monospace; }
@@ -2009,7 +1756,6 @@ function cellSubs(kind, id, day, slot) {
                 .app { flex-direction: column; }
                 .topbar { position: static; padding: 12px 16px; }
                 main { padding: 16px; }
-                .cards { grid-template-columns: 1fr; }
                 .export-panel { width: 100%; box-sizing: border-box; }
         }
         @media (max-width: 480px) {
